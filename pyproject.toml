@@ -1,0 +1,21 @@
+[project]
+name = "Aletheia"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "behzadwaseem",email = "behzadwaseem05@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "torch (>=2.9.1,<3.0.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "numpy (>=2.4.0,<3.0.0)",
+    "fastapi (>=0.127.0,<0.128.0)",
+    "uvicorn (>=0.40.0,<0.41.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
