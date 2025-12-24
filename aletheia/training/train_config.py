@@ -9,6 +9,7 @@ class TrainConfig:
     epochs: int = 3
     device: str = "cpu"
     log_every: int = 100
+    negative_weight: float = 0.1
 
     def __post_init__(self):
         if self.hidden_dims is None:

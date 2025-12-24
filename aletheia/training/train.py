@@ -16,7 +16,8 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
     device: torch.device,
-    log_every: int = 100,
+    negative_weight: float,
+    log_every: int = 100
 ) -> float:
     model.train()
     running_loss = 0.0
@@ -30,8 +31,16 @@ def train_one_epoch(
 
         optimizer.zero_grad(set_to_none=True)
 
+        # Per-example BCE loss
         logits = model(users, items)                 # shape: (batch,)
-        loss = loss_fn(logits, labels)               # scalar
+        losses = loss_fn(logits, labels)   # shape: (batch,)
+
+        # Build weights: positives=1.0, negatives=negative_weight
+        weights = torch.ones_like(labels)
+        weights[labels == 0] = negative_weight
+
+        # Weighted mean loss
+        loss = (losses * weights).mean()
 
         loss.backward()
         optimizer.step()
@@ -73,12 +82,12 @@ def train(
         hidden_dims=cfg.hidden_dims,
     ).to(device)
 
-    loss_fn = torch.nn.BCEWithLogitsLoss()
+    loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr)
 
     print(f"Training on {device} | examples={len(dataset):,} | batch_size={cfg.batch_size}")
     for epoch in range(1, cfg.epochs + 1):
-        avg_loss = train_one_epoch(model, loader, optimizer, loss_fn, device, cfg.log_every)
+        avg_loss = train_one_epoch(model, loader, optimizer, loss_fn, device, cfg.negative_weight, cfg.log_every)
         print(f"epoch {epoch}/{cfg.epochs} | loss={avg_loss:.4f}")
 
     return model
