@@ -32,7 +32,7 @@ def train_one_epoch(
         optimizer.zero_grad(set_to_none=True)
 
         # Per-example BCE loss
-        logits = model(users, items)                 # shape: (batch,)
+        logits = model(users, items)       # shape: (batch,)
         losses = loss_fn(logits, labels)   # shape: (batch,)
 
         # Build weights: positives=1.0, negatives=negative_weight
