@@ -151,21 +151,6 @@ Aletheia/
 └── README.md
 ```
 
----
-
-## Running the Project Locally
-
-### Prerequisites
-
-* Docker
-* Docker Compose
-
-### Start the full application
-
-```bash
-docker compose up --build
-```
-
 **Services**
 
 * Frontend: [http://localhost:3000](http://localhost:3000)
