@@ -19,6 +19,16 @@ export default function Home() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 3000))
 
+    // API call to node
+    // await fetch("/api/recommend", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify({
+    //     item_ids: selectedMovies,
+    //     k: 5,
+    //   }),
+    // });
+
     // Mock recommendations
     const mockRecommendations = [
       {
