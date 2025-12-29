@@ -1,8 +1,13 @@
 import torch
 from pathlib import Path
 import json
+from pathlib import Path
 
 from aletheia.models.ncf import NeuralCollaborativeFiltering
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+MOVIES_CSV = DATA_DIR / "movies.csv"
 
 
 class RecommenderState:
@@ -62,7 +67,6 @@ def load_item_metadata(path: Path) -> dict:
     return metadata
 
 
-
 def load_recommender_state() -> RecommenderState:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -73,9 +77,7 @@ def load_recommender_state() -> RecommenderState:
 
     item_embeddings = extract_item_embeddings(model)
 
-    item_metadata = load_item_metadata(
-        Path("data/ml-100k/movies.csv")
-    )
+    item_metadata = load_item_metadata(MOVIES_CSV)
 
     return RecommenderState(
         model=model,
