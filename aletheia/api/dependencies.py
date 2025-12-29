@@ -1,13 +1,34 @@
 import torch
 from pathlib import Path
-import json
-from pathlib import Path
 
 from aletheia.models.ncf import NeuralCollaborativeFiltering
 
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
-MOVIES_CSV = DATA_DIR / "movies.csv"
+U_ITEM_PATH = DATA_DIR / "ml-100k/u.item"
+
+GENRE_NAMES = [
+    "unknown",
+    "Action",
+    "Adventure",
+    "Animation",
+    "Children",
+    "Comedy",
+    "Crime",
+    "Documentary",
+    "Drama",
+    "Fantasy",
+    "Film-Noir",
+    "Horror",
+    "Musical",
+    "Mystery",
+    "Romance",
+    "Sci-Fi",
+    "Thriller",
+    "War",
+    "Western",
+]
 
 
 class RecommenderState:
@@ -16,14 +37,23 @@ class RecommenderState:
         model: NeuralCollaborativeFiltering,
         item_embeddings: torch.Tensor,
         item_metadata: dict,
+        item2idx: dict,
+        idx2item: dict,
     ):
         self.model = model
-        self.item_embeddings = item_embeddings   # shape: (num_items, d)
-        self.item_metadata = item_metadata       # item_id -> metadata
-
+        self.item_embeddings = item_embeddings   # (num_items, d)
+        self.item_metadata = item_metadata       # raw_movie_id -> metadata
+        self.item2idx = item2idx                 # raw_movie_id -> index
+        self.idx2item = idx2item                 # index -> raw_movie_id
 
 
 def load_model(checkpoint_path: Path, device: torch.device):
+    """
+    Load a trained NCF model from a checkpoint and prepare it for inference.
+
+    Reconstructs the model architecture, loads weights, moves the model to
+    the specified device, and sets evaluation mode.
+    """
     checkpoint = torch.load(checkpoint_path, map_location=device)
 
     model = NeuralCollaborativeFiltering(
@@ -39,35 +69,58 @@ def load_model(checkpoint_path: Path, device: torch.device):
     return model
 
 
-def extract_item_embeddings(
-    model: NeuralCollaborativeFiltering,
-) -> torch.Tensor:
+def extract_item_embeddings(model: NeuralCollaborativeFiltering) -> torch.Tensor:
     """
-    Returns item embedding matrix of shape (num_items, embedding_dim)
+    Load MovieLens 100K movie metadata from the u.item file.
+
+    Parses binary genre flags into human-readable genres and returns
+    metadata keyed by raw MovieLens movie IDs.
     """
+
     with torch.no_grad():
         return model.item_embedding.weight.detach().clone()
 
 
-
-def load_item_metadata(path: Path) -> dict:
+def load_item_metadata(path: Path):
     """
-    Returns: item_id -> {title, genres}
+    Load MovieLens 100K movie metadata from the u.item file.
+
+    Parses binary genre flags into human-readable genres and returns
+    metadata keyed by raw MovieLens movie IDs.
     """
     metadata = {}
+    item_ids = []
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="latin-1") as f:
         for line in f:
-            movie_id, title, genres = line.strip().split(",", 2)
-            metadata[int(movie_id)] = {
-                "title": title,
-                "genres": genres.split("|"),
-            }
+            parts = line.strip().split("|")
 
-    return metadata
+            movie_id = int(parts[0])
+            title = parts[1]
+            genre_flags = parts[5:]  # 19 binary flags
+
+            genres = [
+                genre
+                for genre, flag in zip(GENRE_NAMES, genre_flags)
+                if flag == "1"
+            ]
+
+            metadata[movie_id] = {
+                "title": title,
+                "genres": genres,
+            }
+            item_ids.append(movie_id)
+
+    return metadata, item_ids
 
 
 def load_recommender_state() -> RecommenderState:
+    """
+    Initialize the shared recommender inference state.
+
+    Loads the trained model, item embeddings, metadata, and builds explicit
+    ID-to-index mappings to ensure correct embedding lookup at inference time.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = load_model(
@@ -77,10 +130,21 @@ def load_recommender_state() -> RecommenderState:
 
     item_embeddings = extract_item_embeddings(model)
 
-    item_metadata = load_item_metadata(MOVIES_CSV)
+    item_metadata, item_ids = load_item_metadata(U_ITEM_PATH)
+
+    # Build ID ↔ index mappings
+    item2idx = {item_id: idx for idx, item_id in enumerate(item_ids)}
+    idx2item = {idx: item_id for item_id, idx in item2idx.items()}
+
+    # Critical sanity check
+    assert item_embeddings.size(0) == len(item2idx), (
+        "Mismatch between embedding matrix size and item ID mapping"
+    )
 
     return RecommenderState(
         model=model,
         item_embeddings=item_embeddings,
         item_metadata=item_metadata,
+        item2idx=item2idx,
+        idx2item=idx2item,
     )

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from aletheia.api.routes import health, recommend
+from aletheia.api.routes import health, recommend, upload
 
 
 api_v1_router = APIRouter()
