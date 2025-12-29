@@ -5,7 +5,7 @@ import torch
 router = APIRouter()
 
 
-@router.post("/recommendations/preferences")
+@router.post("/preferences")
 def recommend_from_preferences(
     req: PreferenceRequest,
     request: Request,

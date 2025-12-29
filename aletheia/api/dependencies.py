@@ -7,6 +7,7 @@ from aletheia.models.ncf import NeuralCollaborativeFiltering
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 U_ITEM_PATH = DATA_DIR / "ml-100k/u.item"
+CHECKPOINT_PATH = PROJECT_ROOT / "checkpoints/ncf.pt"
 
 GENRE_NAMES = [
     "unknown",
@@ -54,12 +55,12 @@ def load_model(checkpoint_path: Path, device: torch.device):
     Reconstructs the model architecture, loads weights, moves the model to
     the specified device, and sets evaluation mode.
     """
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
     model = NeuralCollaborativeFiltering(
         num_users=checkpoint["num_users"],
         num_items=checkpoint["num_items"],
-        embedding_dim=checkpoint["embedding_dim"],
+        # embedding_dim=checkpoint["embedding_dim"],
     )
 
     model.load_state_dict(checkpoint["model_state_dict"])
@@ -124,7 +125,7 @@ def load_recommender_state() -> RecommenderState:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = load_model(
-        checkpoint_path=Path("checkpoints/ncf.pt"),
+        checkpoint_path=CHECKPOINT_PATH,
         device=device,
     )
 
@@ -140,6 +141,9 @@ def load_recommender_state() -> RecommenderState:
     assert item_embeddings.size(0) == len(item2idx), (
         "Mismatch between embedding matrix size and item ID mapping"
     )
+
+    print("Num items:", item_embeddings.size(0))
+    print("Num metadata entries:", len(item_metadata))
 
     return RecommenderState(
         model=model,
